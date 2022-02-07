@@ -13,7 +13,7 @@ contract Lottery is VRFConsumerBase, Ownable {
         PROCESSING_WINNER
     }
     LOTTERY_STATE lotteryState;
-    uint256 public entryFee; // in USD
+    uint256 public entryFee;
     uint256 public fee; 
     uint256 public lotteryDuration;
     uint256 public lotteryDeadlineTimestamp;
@@ -40,7 +40,7 @@ contract Lottery is VRFConsumerBase, Ownable {
     ) VRFConsumerBase(_vrfCoordinator, _linkTokenAddress) {
         priceFeed = AggregatorV3Interface(_priceFeedAddress);
         // amount players must pay in order to enter the lottery
-        entryFee = _entryFee;
+        entryFee = _entryFee * 10**18;
         fee = _fee;
         keyhash = _keyhash;
         lotteryState = LOTTERY_STATE.CLOSED;
