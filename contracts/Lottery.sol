@@ -13,8 +13,8 @@ contract Lottery is VRFConsumerBase, Ownable {
         PROCESSING_WINNER
     }
     LOTTERY_STATE lotteryState;
-    uint256 public entryFee;
-    uint256 public fee; // in USD
+    uint256 public entryFee; // in USD
+    uint256 public fee; 
     uint256 public lotteryDuration;
     uint256 public lotteryDeadlineTimestamp;
     bytes32 public keyhash;
@@ -47,6 +47,21 @@ contract Lottery is VRFConsumerBase, Ownable {
         // 24 hours
         lotteryDuration = 60 * 60 * 24;
     }
+    // modifiers
+    modifier onlyOpened {
+        require(lotteryState == LOTTERY_STATE.OPENED, "Lottery must be opened");
+        _;
+    }
+
+    modifier onlyClosed {
+        require(lotteryState == LOTTERY_STATE.CLOSED, "Lottery must be closed");
+        _;
+    }
+
+    modifier notZero(uint256 _number) {
+        require(_number != 0, "This parameter cannot be zero");
+        _;
+    }
 
     function getEntryFee() public view returns (uint256) {
         (, int256 price, , , ) = priceFeed.latestRoundData();
@@ -74,36 +89,39 @@ contract Lottery is VRFConsumerBase, Ownable {
         emit NewEntry(msg.sender, participantEntries[msg.sender]);
     }
 
-    function payUser(address _user, uint256 _amount) internal {
+    function payUser(address _user, uint256 _amount) internal notZero(_amount) {
         require(_user != address(0), "invalid user address");
-        require(_amount > 0, "You have nothing to recieve");
         payable(_user).transfer(_amount);
         emit UserPaid(_user, _amount);
     }
 
-    function startLottery() internal {
-        require(lotteryState == LOTTERY_STATE.CLOSED, "Lottery must be closed");
+    function startLottery() internal onlyClosed {
         lotteryState = LOTTERY_STATE.OPENED;
         lotteryDeadlineTimestamp = block.timestamp + lotteryDuration;
         emit LotteryStarted(block.timestamp);
     }
 
-    function endLottery() public onlyOwner {
-        require(lotteryState == LOTTERY_STATE.OPENED, "The lottery is not open");
-        require(block.timestamp >= lotteryDeadlineTimestamp, "The lottery is not finished yet");
+    function endLottery() public onlyOwner onlyOpened {
+        require(
+            block.timestamp >= lotteryDeadlineTimestamp,
+            "The lottery is not finished yet"
+        );
         lotteryState = LOTTERY_STATE.PROCESSING_WINNER;
         bytes32 requestId = requestRandomness(keyhash, fee);
         emit RequestedRandomness(requestId);
     }
 
-    function fulfillRandomness(bytes32 _requestId, uint256 _randomness) internal override {
+    function fulfillRandomness(bytes32 _requestId, uint256 _randomness)
+        internal
+        override
+        notZero(_randomness)
+    {
         require(
-            lotteryState == LOTTERY_STATE.PROCESSING_WINNER, 
+            lotteryState == LOTTERY_STATE.PROCESSING_WINNER,
             "The contract is not processing the winner yet"
         );
-        require(_randomness != 0, "Random not found");
         uint256 indexOfWinner = _randomness % participants.length;
-        lastestWinner = participants[indexOfWinner]; 
+        lastestWinner = participants[indexOfWinner];
         // The winner recieves 90% of the contract balance
         // The other 10% goes to the owner
         uint256 contractBalance = address(this).balance;
@@ -114,12 +132,12 @@ contract Lottery is VRFConsumerBase, Ownable {
         emit LotteryFinished(lastestWinner, block.timestamp);
     }
 
-    function changeEntryFee(uint256 _newEntryFee) public onlyOwner {
-        require(_newEntryFee > 0, "Entry fee cannot be 0");
-        require(
-            lotteryState == LOTTERY_STATE.CLOSED, 
-            "Lottery must be closed to change entry fee"
-        );
+    function changeEntryFee(uint256 _newEntryFee)
+        public
+        onlyOwner
+        onlyClosed
+        notZero(_newEntryFee)
+    {
         entryFee = _newEntryFee;
     }
-}   
+}
