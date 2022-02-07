@@ -11,6 +11,9 @@ from web3 import Web3
 
 LOCAL_BLOCKCHAIN_ENVIRONMENTS = ["development", "ganache-local"]
 LINK_TO_FUND = Web3.toWei(1, "ether")
+INITIAL_PRICE = 400000000000
+DECIMALS = 8
+
 
 def get_account(index=None):
     if index:
@@ -58,7 +61,7 @@ def deploy_mocks():
     account = get_account()
     print("Deploying mocks...")
     print("Deploying MockV3Aggregator...")
-    MockV3Aggregator.deploy({"from": account})
+    MockV3Aggregator.deploy(DECIMALS, INITIAL_PRICE, {"from": account})
     print("Deploying Link token...")
     link_token = LinkToken.deploy({"from": account})
     print("Deploying VRFCoordinatorMock...")
