@@ -10,17 +10,19 @@ contract Lottery is VRFConsumerBase, Ownable {
     enum LOTTERY_STATE {
         CLOSED,
         OPENED,
-        PROCESSING_WINNER
+        PROCESSING
     }
-    LOTTERY_STATE lotteryState;
+    LOTTERY_STATE public lotteryState;
+    uint256 public randomness;
+    uint256 public entryCounter;
     uint256 public entryFee;
     uint256 public fee; 
     uint256 public lotteryDuration;
     uint256 public lotteryDeadlineTimestamp;
     bytes32 public keyhash;
-    address payable[] public participants;
-    address payable public lastestWinner;
+    address public lastestWinner;
     mapping(address => uint256) public participantEntries;
+    mapping(uint256=>address) public entryIdToParticipant;
     AggregatorV3Interface public priceFeed;
 
     // events
@@ -40,12 +42,12 @@ contract Lottery is VRFConsumerBase, Ownable {
     ) VRFConsumerBase(_vrfCoordinator, _linkTokenAddress) {
         priceFeed = AggregatorV3Interface(_priceFeedAddress);
         // amount players must pay in order to enter the lottery
-        entryFee = _entryFee * 10**18;
+        entryFee = _entryFee;
         fee = _fee;
         keyhash = _keyhash;
         lotteryState = LOTTERY_STATE.CLOSED;
         // 24 hours
-        lotteryDuration = 60 * 60 * 24;
+        lotteryDuration = 86400;
     }
     // modifiers
     modifier onlyOpened {
@@ -70,22 +72,22 @@ contract Lottery is VRFConsumerBase, Ownable {
         return (entryFee * precision) / ethPrice;
     }
 
-    function enterLottery() public payable {
+    function enterLottery() public payable onlyOpened {
         uint256 _fee = getEntryFee();
-        require(_fee > 0, "Fee cannot be 0");
         require(msg.sender != address(0), "invalid user address");
         require(msg.value >= _fee, "You need to spend more ETH!");
+        require(
+            block.timestamp < lotteryDeadlineTimestamp, 
+            "The lottery deadline is finished"
+        );
         // In case of the user send an amount greater than the necessary, refund the user
         uint256 amountToBeRefund = msg.value - _fee;
         if (amountToBeRefund > 0) {
             payUser(msg.sender, amountToBeRefund);
         }
-        // If the lottery is closed, start it
-        if (participants.length == 0) {
-            startLottery();
-        }
-        participants.push(payable(msg.sender));
+        entryIdToParticipant[entryCounter] = msg.sender;
         participantEntries[msg.sender]++;
+        entryCounter++;
         emit NewEntry(msg.sender, participantEntries[msg.sender]);
     }
 
@@ -95,7 +97,7 @@ contract Lottery is VRFConsumerBase, Ownable {
         emit UserPaid(_user, _amount);
     }
 
-    function startLottery() internal onlyClosed {
+    function startLottery() public onlyOwner onlyClosed {
         lotteryState = LOTTERY_STATE.OPENED;
         lotteryDeadlineTimestamp = block.timestamp + lotteryDuration;
         emit LotteryStarted(block.timestamp);
@@ -106,7 +108,7 @@ contract Lottery is VRFConsumerBase, Ownable {
             block.timestamp >= lotteryDeadlineTimestamp,
             "The lottery is not finished yet"
         );
-        lotteryState = LOTTERY_STATE.PROCESSING_WINNER;
+        lotteryState = LOTTERY_STATE.PROCESSING;
         bytes32 requestId = requestRandomness(keyhash, fee);
         emit RequestedRandomness(requestId);
     }
@@ -117,11 +119,11 @@ contract Lottery is VRFConsumerBase, Ownable {
         notZero(_randomness)
     {
         require(
-            lotteryState == LOTTERY_STATE.PROCESSING_WINNER,
+            lotteryState == LOTTERY_STATE.PROCESSING,
             "The contract is not processing the winner yet"
         );
-        uint256 indexOfWinner = _randomness % participants.length;
-        lastestWinner = participants[indexOfWinner];
+        uint256 entryIdOfWinner = _randomness % entryCounter;
+        lastestWinner = entryIdToParticipant[entryIdOfWinner];
         // The winner recieves 90% of the contract balance
         // The other 10% goes to the owner
         uint256 contractBalance = address(this).balance;
@@ -129,6 +131,10 @@ contract Lottery is VRFConsumerBase, Ownable {
         uint256 amountToPayOwner = (contractBalance * 10) / 100;
         payUser(lastestWinner, amountToPayWinner);
         payUser(owner(), amountToPayOwner);
+        // Reset 
+        lotteryState = LOTTERY_STATE.CLOSED;
+        entryCounter = 0;
+        randomness = _randomness;
         emit LotteryFinished(lastestWinner, block.timestamp);
     }
 
@@ -139,5 +145,14 @@ contract Lottery is VRFConsumerBase, Ownable {
         notZero(_newEntryFee)
     {
         entryFee = _newEntryFee;
+    }
+
+    function changeDuration(uint256 _newDuration) 
+        public
+        onlyOwner 
+        onlyClosed
+        notZero(_newDuration)
+    {
+        lotteryDuration = _newDuration;
     }
 }
