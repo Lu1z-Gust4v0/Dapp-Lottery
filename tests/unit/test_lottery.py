@@ -37,7 +37,7 @@ def test_can_enter_lottery():
     tx.wait(1)
     entry_fee = lottery.getEntryFee()
     # Act
-    tx = lottery.enterLottery({"from": account, "value": entry_fee})
+    tx = lottery.enterLottery(1, {"from": account, "value": entry_fee})
     tx.wait(1)
     # Assert
     entry_counter = lottery.entryCounter()
@@ -53,6 +53,28 @@ def test_can_enter_lottery():
     assert balance == entry_fee
 
 
+def test_can_buy_multiple_entries():
+    # Arrange
+    if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
+        pytest.skip("Only for local testing")
+    account = get_account()
+    lottery = deploy_lottery()
+    lottery.startLottery({"from": account})
+    entry_fee = lottery.getEntryFee()
+    # Act  
+    expected_entries = 5
+    tx = lottery.enterLottery(
+        expected_entries, {"from": account, "value": entry_fee * expected_entries}
+    )
+    tx.wait(1)
+    # Assert
+    assert lottery.lotteryState() == 1
+    assert lottery.balance() == entry_fee * expected_entries
+    assert lottery.participantEntries(account) == expected_entries
+    for id in range(expected_entries):
+        assert lottery.entryIdToParticipant(id) == account
+
+
 def test_cannot_enter_unless_started():
     # Arrange
     if network.show_active() not in LOCAL_BLOCKCHAIN_ENVIRONMENTS:
@@ -62,7 +84,7 @@ def test_cannot_enter_unless_started():
     entry_fee = lottery.getEntryFee()
     # Act/Assert
     with pytest.raises(exceptions.VirtualMachineError):
-        lottery.enterLottery({"from": account, "value": entry_fee})
+        lottery.enterLottery(1, {"from": account, "value": entry_fee})
 
 
 def test_can_end_lottery():
@@ -75,7 +97,7 @@ def test_can_end_lottery():
     fund_with_link(lottery.address)
     lottery.startLottery({"from": account})
     entry_fee = lottery.getEntryFee()
-    enter_lottery_tx = lottery.enterLottery({"from": account, "value": entry_fee})
+    enter_lottery_tx = lottery.enterLottery(1, {"from": account, "value": entry_fee})
     enter_lottery_tx.wait(1)
     # Act
     # time travel 
@@ -101,9 +123,9 @@ def test_can_pick_winner_correctly():
     # Act
     entry_fee = lottery.getEntryFee()
     lottery.startLottery({"from": account})
-    lottery.enterLottery({"from": account, "value": entry_fee})
-    lottery.enterLottery({"from": expected_winner, "value": entry_fee})
-    lottery.enterLottery({"from": get_account(index=2), "value": entry_fee})
+    lottery.enterLottery(1, {"from": account, "value": entry_fee})
+    lottery.enterLottery(1, {"from": expected_winner, "value": entry_fee})
+    lottery.enterLottery(1, {"from": get_account(index=2), "value": entry_fee})
     entry_counter = lottery.entryCounter()
     # get balances 
     contract_initial_balance = lottery.balance()
@@ -117,8 +139,6 @@ def test_can_pick_winner_correctly():
     get_contract("vrf_coordinator").callBackWithRandomness(
         request_id, (LUCK_NUMBER + 1), lottery.address
     )
-    winner_id = (LUCK_NUMBER + 1) % entry_counter
-    winner = lottery.entryIdToParticipant(winner_id)
     # Assert
     amount_to_winner = contract_initial_balance * 0.9
     amount_to_owner = contract_initial_balance * 0.1
@@ -127,7 +147,7 @@ def test_can_pick_winner_correctly():
     owner_current_balance = account.balance()
     winner_current_balance = expected_winner.balance()
     
-    assert expected_winner == winner
+    assert expected_winner == lottery.latestWinner()
     assert contract_current_balance == 0
     assert winner_current_balance == winner_initial_balance + amount_to_winner
     assert owner_current_balance == owner_initial_balance + amount_to_owner

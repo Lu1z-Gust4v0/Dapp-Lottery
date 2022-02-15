@@ -18,9 +18,9 @@ contract Lottery is VRFConsumerBase, Ownable {
     uint256 public entryFee;
     uint256 public fee; 
     uint256 public lotteryDuration;
-    uint256 public lotteryDeadlineTimestamp;
+    uint256 public lotteryDeadlineTimestamp;    
     bytes32 public keyhash;
-    address public lastestWinner;
+    address public latestWinner;
     mapping(address => uint256) public participantEntries;
     mapping(uint256=>address) public entryIdToParticipant;
     AggregatorV3Interface public priceFeed;
@@ -28,7 +28,7 @@ contract Lottery is VRFConsumerBase, Ownable {
     // events
     event LotteryStarted(uint256 timeStamp);
     event LotteryFinished(address winner, uint256 timeStamp);
-    event NewEntry(address participant, uint256 entryCouter);
+    event NewEntry(address participant, uint256 entryId);
     event UserPaid(address user, uint256 amount);
     event RequestedRandomness(bytes32 requestId);
 
@@ -72,23 +72,31 @@ contract Lottery is VRFConsumerBase, Ownable {
         return (entryFee * precision) / ethPrice;
     }
 
-    function enterLottery() public payable onlyOpened {
+    function enterLottery(uint256 _numberOfEntries) 
+        public 
+        payable 
+        onlyOpened 
+        notZero(_numberOfEntries)
+    {
         uint256 _fee = getEntryFee();
         require(msg.sender != address(0), "invalid user address");
-        require(msg.value >= _fee, "You need to spend more ETH!");
+        require(msg.value >= _fee * _numberOfEntries, "You need to spend more ETH!");
         require(
             block.timestamp < lotteryDeadlineTimestamp, 
             "The lottery deadline is finished"
         );
         // In case of the user send an amount greater than the necessary, refund the user
-        uint256 amountToBeRefund = msg.value - _fee;
+        uint256 amountToBeRefund = msg.value - (_fee * _numberOfEntries);
         if (amountToBeRefund > 0) {
             payUser(msg.sender, amountToBeRefund);
         }
-        entryIdToParticipant[entryCounter] = msg.sender;
-        participantEntries[msg.sender]++;
-        entryCounter++;
-        emit NewEntry(msg.sender, participantEntries[msg.sender]);
+        
+        for (uint256 counter = 0; counter < _numberOfEntries; counter++) {
+            entryIdToParticipant[entryCounter] = msg.sender;
+            participantEntries[msg.sender]++;
+            entryCounter++;
+            emit NewEntry(msg.sender, entryCounter - 1);    
+        }
     }
 
     function payUser(address _user, uint256 _amount) internal notZero(_amount) {
@@ -97,13 +105,13 @@ contract Lottery is VRFConsumerBase, Ownable {
         emit UserPaid(_user, _amount);
     }
 
-    function startLottery() public onlyOwner onlyClosed {
+    function startLottery() public onlyClosed {
         lotteryState = LOTTERY_STATE.OPENED;
         lotteryDeadlineTimestamp = block.timestamp + lotteryDuration;
         emit LotteryStarted(block.timestamp);
     }
 
-    function endLottery() public onlyOwner onlyOpened {
+    function endLottery() public onlyOpened {
         require(
             block.timestamp >= lotteryDeadlineTimestamp,
             "The lottery is not finished yet"
@@ -123,19 +131,22 @@ contract Lottery is VRFConsumerBase, Ownable {
             "The contract is not processing the winner yet"
         );
         uint256 entryIdOfWinner = _randomness % entryCounter;
-        lastestWinner = entryIdToParticipant[entryIdOfWinner];
+        latestWinner = entryIdToParticipant[entryIdOfWinner];
         // The winner recieves 90% of the contract balance
         // The other 10% goes to the owner
         uint256 contractBalance = address(this).balance;
         uint256 amountToPayWinner = (contractBalance * 90) / 100;
         uint256 amountToPayOwner = (contractBalance * 10) / 100;
-        payUser(lastestWinner, amountToPayWinner);
+        payUser(latestWinner, amountToPayWinner);
         payUser(owner(), amountToPayOwner);
         // Reset 
         lotteryState = LOTTERY_STATE.CLOSED;
+        for (uint index = 0; index < entryCounter; index++) {
+            participantEntries[entryIdToParticipant[index]] = 0;
+        }
         entryCounter = 0;
         randomness = _randomness;
-        emit LotteryFinished(lastestWinner, block.timestamp);
+        emit LotteryFinished(latestWinner, block.timestamp);
     }
 
     function changeEntryFee(uint256 _newEntryFee)
