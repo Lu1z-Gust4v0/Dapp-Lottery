@@ -40,4 +40,4 @@ brownie run scripts/update_front_end.py
 ```
 brownie run scripts/fund_contract.py
 ```
-## Lincense MIT
+## License MIT
