@@ -10,6 +10,8 @@ a trustless lottery experience.
 - Web3.js (Javascript library for interecting with ethereum nodes)
 - Brownie (development and testing framework for smart contracts)
 
+## Access the Dapp
+* [Dapp Lottery](https://lu1z-gust4v0.github.io/Dapp-Lottery/front_end/index.html)
 ## Getting started
 ### Create a .env file following .env.example
 ```
@@ -36,7 +38,7 @@ brownie compile
 brownie run scripts/update_front_end.py
 ```
 ### Fund the contract with testnet link
-- [ETH + LINK faucet](https://faucets.chain.link/rinkeby)
+* [ETH + LINK faucet](https://faucets.chain.link/rinkeby)
 ```
 brownie run scripts/fund_contract.py
 ```
