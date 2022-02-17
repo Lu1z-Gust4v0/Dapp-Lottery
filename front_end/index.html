@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="shortcut icon" href="images/ethereum-logo.ico" type="image/x-icon">
+    <script defer src="scripts/main.js" type="module"></script>
+    <title>Dapp Lottery</title>
+</head>
+<body>
+    <header>
+        <div class="logo">
+            <img src="images/ethereum-logo.svg" alt="ethereum-logo">
+            <span>Dapp Lottery</span>
+        </div>
+        <button class="connect-button ">Connect</button>
+    </header>
+    <main class="main-card">
+        <section class="inner-card">
+            <h1 class="main-title">Dapp Lottery</h1>
+            <p class="description">
+                Dapp lottery is a dapp that explores the use of smart contracts and chainlink tools to create a trustless
+                lottery. This dapp was built on rinkeby testnet, we are using fake ethereum.
+            </p>
+            <p class="description">
+                Before you interact with this dapp you have to connect your metamask. If you do not have a metamask installed go 
+                to this <a 
+                    href="https://metamask.zendesk.com/hc/en-us/articles/360015489531-Getting-started-with-MetaMask" 
+                    target="_blank" 
+                    rel="external">
+                    tutorial
+                    </a> 
+                to learn how to use it.
+            </p>
+            <button class="button start-lottery">Start lottery</button>
+        </section>
+        <section class="inner-card">
+            <h2 class="title">Statistics</h2>
+            <div class="info-container prize-pool">
+                <span>0</span>
+                <img src="images/ethereum-logo.svg" alt="ethereum-logo">
+            </div>
+            <div class="info-container countdown">
+                <span>00:00:00</span><ion-icon name="time-outline"></ion-icon>
+            </div>
+            <div class="info-container state">
+                <span class="closed">Closed</span>
+            </div>
+            <div class="info-container entry-counter">
+                <span>0</span><ion-icon name="ticket-outline"></ion-icon>
+            </div>
+        </section>
+        <section class="inner-card">
+            <h2 class="title">Participate</h2>
+            <div class="info-container user-entry-counter">
+                <span>0</span><ion-icon name="ticket-outline"></ion-icon>
+            </div>
+            <div class="info-container user-balance">
+                <span>0</span><img src="images/ethereum-logo.svg" alt="ethereum-logo">
+            </div>
+            <div class="info-container purchase-ticket">
+                <div class="sub-container">
+                    <span class="entry-price">Price: 0.00</span><img src="images/ethereum-logo.svg" alt="ethereum-logo">
+                </div>
+                <form class="input-container">
+                    <input type="number" name="number-of-entries" id="number-of-entries" min="1" placeholder="1">
+                    <button class="button enter-lottery">Enter</button>
+                </form>
+            </div>
+        </section>
+        <section class="inner-card">
+            <h2 class="title">Results</h2>
+            <div class="info-container latest-winner">
+                <span>0</span>
+            </div>
+            <div class="info-container random-number">
+                <span>0</span>
+            </div>
+            <button class="button show-results" disabled>Show results</button>
+            <p class="check">Check the contract on 
+                <a 
+                    href="https://rinkeby.etherscan.io/address/0x35bc9eea3faf04b7931c578cfe1502b806eec145" 
+                    target="_blank" rel="external">
+                    etherscan
+                </a>
+            </p>
+        </section>
+    </main>
+    <footer>
+        <p class="footer-msg">Powered by Rinkeby network</p>
+    </footer>
+    <script type="module" src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.esm.js"></script>
+    <script nomodule src="https://unpkg.com/ionicons@5.5.2/dist/ionicons/ionicons.js"></script>
+    <script src="https://unpkg.com/web3@latest/dist/web3.min.js"></script>
+</body>
+</html>
