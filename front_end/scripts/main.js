@@ -1,4 +1,4 @@
-import { getContract, convertState, sliceAddress } from "./helper_functions.js"
+import { getContract, convertState, sliceLongValue } from "./helper_functions.js"
 
 const web3 = new Web3(ethereum)
 const chainId = "4" // rinkeby 
@@ -67,7 +67,7 @@ async function connectMetamask() {
         loadUserData()
         // change button styles
         connectBtn.classList.add("connected")
-        connectBtn.textContent = sliceAddress(userAccount)
+        connectBtn.textContent = sliceLongValue(userAccount)
     } catch (error) {
         if (err.code === 4001) {
             // EIP-1193 userRejectedRequest error
@@ -86,7 +86,7 @@ function startLottery() {
         console.log(hash)
     }).on("receipt", () => {
         loadDappData()
-    }).on("error", (error)=>{
+    }).on("error", (error) => {
         console.log(error)
     })
 }
@@ -100,8 +100,8 @@ function enterLottery(entryNumber) {
     }).on("transactionHash", (hash) => {
         console.log(hash)
     }).on("receipt", () => {
-        resetApp()
-    }).on("error", (error)=>{
+        resetDapp()
+    }).on("error", (error) => {
         console.log(error)
     })
 }
@@ -112,9 +112,14 @@ function endLottery() {
     }).on("transactionHash", (hash) => {
         console.log(hash)
     }).on("receipt", () => {
-        resetApp()
-    }).on("error", (error)=>{
+        resetDapp()
+    }).on("error", (error) => {
         console.log(error)
+    })
+    // Listen for the end of the lottery
+    contract.events.LotteryFinished()
+    .on("data", ()=>{
+        resetDapp()
     })
 }
 
@@ -163,8 +168,10 @@ async function loadDappData() {
     ).toFixed(4)
     entryFeeSpan.textContent = `Price: ${entryFee}`
     totalEntriesSpan.textContent = await contract.methods.entryCounter().call()
-    randomNumberSpan.textContent = await contract.methods.randomness().call()
-    latestWinnerSpan.textContent = sliceAddress(
+    randomNumberSpan.textContent = sliceLongValue(
+        await contract.methods.randomness().call()
+    )
+    latestWinnerSpan.textContent = sliceLongValue(
         await contract.methods.latestWinner().call()
     )
     startCountdown()
@@ -179,6 +186,7 @@ function updateCountdown(deadline) {
     let timestamp = deadline - (Date.now() / 1000) 
     if (timestamp <= 0) {
         countdownSpan.textContent = "00:00:00"
+        return
     }
     let hours = Math.floor(timestamp / 3600) 
     let minutes = Math.floor((timestamp % 3600) / 60)
@@ -194,7 +202,7 @@ function updateCountdown(deadline) {
     countdownSpan.textContent = `${tmp[0]}:${tmp[1]}:${tmp[2]}`
 }
 
-function resetApp() {
+function resetDapp() {
     loadDappData()
     loadUserData()
 }

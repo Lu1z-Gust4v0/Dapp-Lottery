@@ -43,8 +43,18 @@ function convertState(state) {
     return stateMapping[state]
 }
 
-function sliceAddress(address) {
-    return address.slice(0, 5) + "..." + address.slice(38, 42)
+function sliceLongValue(value) {
+    // covert the value to string so that we can split it
+    let str = value.toString()
+    let strLen = str.length
+    // return "0x000..0000"
+    return str.slice(0, 5) + "..." + str.slice(strLen - 4, strLen)
 }
 
-export {getContractArtifact, getContractAddress, getContract, convertState, sliceAddress}
+export {
+    getContractArtifact, 
+    getContractAddress, 
+    getContract, 
+    convertState, 
+    sliceLongValue
+}
